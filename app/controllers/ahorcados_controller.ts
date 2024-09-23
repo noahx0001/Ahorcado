@@ -24,8 +24,8 @@ export default class AhorcadosController {
         // Declara las variables
         let mensaje2 = ""
         let palabra = request.cookie('palabra_original')
-        let intentos = request.cookie('intentos') || 15
-        response.cookie('intentos', --intentos)
+        let intentos = request.cookie('intentos') || 0
+
         let letras_adivinadas = JSON.parse(request.cookie('letras_adivinadas') || '[]')
         response.cookie('ganado', false)
 
@@ -37,7 +37,7 @@ export default class AhorcadosController {
         }
 
         //Verifica si el jugador ha perdido
-        if (intentos === 0 && request.cookie('ganado') === 'true') {
+        if (intentos === 0 || request.cookie('ganado') === 'true') {
             return response.json({
                 "mensaje": "¡Juego terminado, inicia el juego para comenzar de nuevo!"
             })
@@ -49,15 +49,18 @@ export default class AhorcadosController {
             if (palabra.includes(params.letra)) {
                 // Verifica si la letra ya fue adivinada
                 if (!letras_adivinadas.includes(params.letra)) {
+
                     letras_adivinadas.push(params.letra) //Agrega la letra a la lista de letras adivinadas
                     response.cookie('letras_adivinadas', JSON.stringify(letras_adivinadas))
                     mensaje2 = "¡Correcto!"
                 } else {
                     mensaje2 = "¡Ya existe!"
+                    response.cookie('intentos', --intentos)
                 }
 
             } else {
                 mensaje2 = "¡Incorrecto!"
+                response.cookie('intentos', --intentos)
             }
         }
 
