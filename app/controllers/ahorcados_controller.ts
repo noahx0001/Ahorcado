@@ -1,103 +1,69 @@
-import type { HttpContext } from '@adonisjs/core/http'
+import type { HttpContext } from '@adonisjs/core/http';
 
 export default class AhorcadosController {
-    async iniciarjuego({ response }: HttpContext) {
+
+    async jugar({ response, request, params }: HttpContext) {
 
         const palabras = ['php', 'framework', 'laravel', 'insomnia', 'code', 'javascript', 'python', 'java']
+        const indicePalabra = parseInt(params.palabra)
+        const palabra = palabras[indicePalabra]
+        let intentos = 4
+        const letras_adivinadas: string[] = [];
+        const letras: string[] = request.input('letras');
+        const jugar = params.jugar
 
-        const palabra = palabras[Math.floor(Math.random() * 4)]
 
-        response.cookie('palabra_original', palabra)
-        response.cookie('intentos', 15)
-
-        response.cookie('letras_adivinadas', JSON.stringify([]))
-
-        return response.json({
-            "mensaje": "¡Juego iniciado, Empieza a adivinar!",
-            "palabra": "_".repeat(palabra.length),
-            "intentos": 15
-        })
-    }
-
-    async adivinar({ request, params, response }: HttpContext) {
-
-        // Declara las variables
-        let mensaje2 = ""
-        let palabra = request.cookie('palabra_original')
-        let intentos = request.cookie('intentos') || 0
-
-        let letras_adivinadas = JSON.parse(request.cookie('letras_adivinadas') || '[]')
-        response.cookie('ganado', false)
-
-        // Verifica si el juego ha iniciado si no hay palabra
-        if (!palabra) {
+        // Verifica si el juego ha iniciado
+        if (!jugar) {
             return response.json({
-                "error": "¡Juego no iniciado, inicia el juego para comenzar a adivinar!"
-            })
+                mensaje: "¡Juego no iniciado, inicia el juego para comenzar a adivinar!",
+                palabra: "_".repeat(palabra.length) + " (" + palabra.length + " letras)"
+            });
         }
 
-        //Verifica si el jugador ha perdido
-        if (intentos === 0 || request.cookie('ganado') === 'true') {
-            return response.json({
-                "mensaje": "¡Juego terminado, inicia el juego para comenzar de nuevo!"
-            })
-        }
+        // Manejar adivinanza de letra
+        let mensaje = '';
 
-        // Verifica si se puso una letra
-        if (params.letra) {
-            //Verifica si la palabra contiene la letra
-            if (palabra.includes(params.letra)) {
-                // Verifica si la letra ya fue adivinada
-                if (!letras_adivinadas.includes(params.letra)) {
+        letras.forEach(letra => {
+            if (!letras_adivinadas.includes(letra)) {
+                letras_adivinadas.push(letra);
 
-                    letras_adivinadas.push(params.letra) //Agrega la letra a la lista de letras adivinadas
-                    response.cookie('letras_adivinadas', JSON.stringify(letras_adivinadas))
-                    mensaje2 = "¡Correcto!"
+                // Verifica si la letra está en la palabra
+                if (palabra.includes(letra)) {
+                    mensaje = "¡Correcto!";
                 } else {
-                    mensaje2 = "¡Ya existe!"
-                    response.cookie('intentos', --intentos)
+                    mensaje = "¡Incorrecto!";
+                    intentos-- // Reduce intentos si la letra no está
                 }
-
             } else {
-                mensaje2 = "¡Incorrecto!"
-                response.cookie('intentos', --intentos)
+                mensaje = "¡Ya adivinaste esa letra!";
+                intentos--
             }
+        });
+
+        // Verifica si el jugador ha perdido
+        if (intentos <= 0) {
+            return response.json({
+                mensaje: "¡Juego terminado, se acabaron los intentos! La palabra era: " + palabra
+            });
         }
 
-        // Reemplaza las letras que ya han sido adivinadas 
-        // Funcion split devuelve un array de una cadena de texto donde cada elemento es una letra
-        // join une todos los elementos del array en una cadena de texto
-        // map aplica una función a cada elemento del array
-        // join convierte el array en una cadena de texto
-
-        let palabra_guiones = palabra.split('').map((letra: any) => {
+        // Reemplaza las letras que ya han sido adivinadas
+        const palabraOculta = palabra.split('').map((letra: string) => {
             return letras_adivinadas.includes(letra) ? letra : '_';
         }).join('');
 
-
-
-        // Verifica si el juego ha terminado
-        if (!palabra_guiones.includes('_')) {
-
-            response.cookie('ganado', true)
-            mensaje2 = "¡Ganaste!"
-
-            response.clearCookie('intentos')
-            response.clearCookie('letras_adivinadas')
-
+        // Verifica si el jugador ha ganado
+        if (!palabraOculta.includes('_')) {
             return response.json({
-                "mensaje": "¡Juego terminado, inicia el juego para comenzar de nuevo!",
-                "acertación": mensaje2,
-                "palabra": palabra_guiones + " | " + palabra.length + " letras"
-            })
-
+                mensaje: "¡Ganaste! La palabra era: " + palabra + ". ¡Enhorabuena!"
+            });
         }
 
         return response.json({
-            "mensaje": "¡Juego iniciado, Empieza a adivinar! " + mensaje2,
-            "acertación": mensaje2,
-            "palabra": palabra_guiones + " | " + palabra.length + " letras",
-            "intentos": intentos + " restantes"
-        })
+            mensaje: "¡Sigue intentando! " + mensaje,
+            palabra: palabraOculta,
+            intentos: intentos + " restantes"
+        });
     }
 }
