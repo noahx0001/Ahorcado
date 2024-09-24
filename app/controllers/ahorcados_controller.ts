@@ -36,7 +36,7 @@ export default class AhorcadosController {
                     intentos-- // Reduce intentos si la letra no está
                 }
             } else {
-                mensaje = "¡Ya adivinaste esa letra!";
+                mensaje = "¡Ya adivinaste esa letra!"
                 intentos--
             }
         });
